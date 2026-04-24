@@ -3,16 +3,9 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from model_class import LightweightMV2
+from labels import CLASS_NAMES
 
 app = FastAPI()
-
-CLASS_NAMES = [
-    "Cuticle Picking", "Eyeglasses", "Face Touching", "Hair Pulling",
-    "Hand Waving", "Knuckle Cracking", "Leg Scratching", "Leg Shaking",
-    "Nail Biting", "Phone Call", "Raising Hand", "Reading",
-    "Scratching Arm", "Sitting Still", "Sit-to-Stand", "Standing",
-    "Stand-to-Sit", "Stretching", "Thumb Sucking", "Walking",
-]
 
 print("Loading model...")
 
@@ -26,7 +19,7 @@ input_size = ckpt["input_size"]
 
 model = LightweightMV2(
     input_size=input_size,
-    num_classes=20
+    num_classes=len(CLASS_NAMES)
 )
 
 model.load_state_dict(ckpt["model_state_dict"])
