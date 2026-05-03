@@ -7,6 +7,12 @@ from labels import CLASS_NAMES
 
 app = FastAPI()
 
+# Optional: redirect print to a log file if you want persistent logs
+import sys
+log_file = open("logs.txt", "a")
+sys.stdout = log_file
+sys.stderr = log_file
+
 print("Loading model...")
 
 ckpt = torch.load(
@@ -37,7 +43,17 @@ def home():
 @app.post("/predict")
 def predict(data: dict):
     try:
+        # ---------- LOG INCOMING REQUEST ----------
+        print("\n--- NEW REQUEST ---")
+        print("Raw input keys:", data.keys())
+        # DO NOT print(data) – it floods the logs with huge arrays
+        # ---------- END LOG ----------
+
         arr = np.array(data["features"], dtype=np.float32)
+
+        # ---------- LOG INPUT SHAPE ----------
+        print("Input shape:", arr.shape)
+        # ---------- END LOG ----------
 
         if arr.ndim != 2:
             return {"error": "Expected shape (T, F)"}
@@ -63,7 +79,14 @@ def predict(data: dict):
             for i, p in top5
         ]
 
+        # ---------- LOG TOP PREDICTIONS ----------
+        print("Top predictions:", result)
+        print("--- END REQUEST ---\n")
+        # ---------- END LOG ----------
+
         return {"predictions": result}
 
     except Exception as e:
+        # Log the error as well
+        print("ERROR:", str(e))
         return {"error": str(e)}
