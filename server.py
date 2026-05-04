@@ -23,13 +23,14 @@ model = LightweightMV2(
 )
 
 model.load_state_dict(ckpt["model_state_dict"])
-model.eval()
+model.eval() #disables dropout, batchnorm
 
 mu = ckpt["mu"].astype(np.float32)
 sigma = ckpt["sigma"].astype(np.float32)
 
 print("Model loaded successfully!")
 
+#a simple health check
 @app.get("/")
 def home():
     return {"message": "BFRB Model API Running"}
@@ -37,28 +38,22 @@ def home():
 @app.post("/predict")
 def predict(data: dict):
     try:
-        # ---------- LOG INCOMING REQUEST ----------
         print("\n--- NEW REQUEST ---", flush=True)
         print("Raw input keys:", data.keys(), flush=True)
-        # DO NOT print(data) – it floods the logs with huge arrays
-        # ---------- END LOG ----------
 
-        arr = np.array(data["features"], dtype=np.float32)
-
-        # ---------- LOG INPUT SHAPE ----------
+        arr = np.array(data["features"], dtype=np.float32) #shape = (T,F)
         print("Input shape:", arr.shape, flush=True)
-        # ---------- END LOG ----------
 
         if arr.ndim != 2:
             return {"error": "Expected shape (T, F)"}
 
         arr = (arr - mu) / sigma
 
-        tensor = torch.from_numpy(arr).unsqueeze(0)
+        tensor = torch.from_numpy(arr).unsqueeze(0) #shape = (1,T,F)
 
-        with torch.no_grad():
-            logits = model(tensor)
-            probs = F.softmax(logits, dim=-1)[0].numpy()
+        with torch.no_grad(): #no grad computation
+            logits = model(tensor) #shape = (1, 24)
+            probs = F.softmax(logits, dim=-1)[0].numpy() #1d array of probablities
 
         top5 = sorted(
             enumerate(probs),
@@ -73,14 +68,12 @@ def predict(data: dict):
             for i, p in top5
         ]
 
-        # ---------- LOG TOP PREDICTIONS ----------
         print("Top predictions:", result, flush=True)
         print("--- END REQUEST ---\n", flush=True)
-        # ---------- END LOG ----------
 
         return {"predictions": result}
 
     except Exception as e:
-        # Log the error as well
+        #any error is returned as a JSON error message
         print("ERROR:", str(e), flush=True)
         return {"error": str(e)}
